@@ -1,4 +1,4 @@
-FROM nginx:1.21.6-alpine
+FROM nginx:1.22.0-alpine
 
 LABEL org.opencontainers.image.title="wordpress-revproxy" \
       org.opencontainers.image.description="Reverse proxy (nginx) docker image for my WordPress stack" \
