@@ -84,7 +84,7 @@ generate_config() {
     echo "  ssl_certificate_key    /etc/nginx/certs/${domain}.key;"
     echo "  include snippets/cloudflare.conf;"
     echo "}"
-  ) #> "/etc/nginx/conf.d/99-${domain}.conf"
+  ) > "/etc/nginx/conf.d/99-${domain}.conf"
 }
 
 generate_redirect() {
