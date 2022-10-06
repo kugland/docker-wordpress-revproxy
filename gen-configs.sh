@@ -39,6 +39,10 @@ define_site() {
   echo "Site defined: $domain, $upstream_host:$upstream_port, $default_www"
 }
 
+redirect() {
+  SITES[$1]="redirect;$1;$2"
+}
+
 source /etc/revproxy-sites.conf
 
 generate_config() {
@@ -80,6 +84,23 @@ generate_config() {
     echo "  ssl_certificate_key    /etc/nginx/certs/${domain}.key;"
     echo "  include snippets/cloudflare.conf;"
     echo "}"
+  ) #> "/etc/nginx/conf.d/99-${domain}.conf"
+}
+
+generate_redirect() {
+  local domain="$1"
+  local target="$2"
+
+  echo "Setting up redirect: https://${domain} -> https://${target}"
+  (
+    echo "server {"
+    echo "  server_name ${domain};"
+    echo "  return 302 https://${target}\$request_uri;"
+    echo "  listen 443 ssl;"
+    echo "  ssl_certificate        /etc/nginx/certs/${domain}.crt;"
+    echo "  ssl_certificate_key    /etc/nginx/certs/${domain}.key;"
+    echo "  include snippets/cloudflare.conf;"
+    echo "}"
   ) > "/etc/nginx/conf.d/99-${domain}.conf"
 }
 
@@ -106,9 +127,15 @@ generate_certificate() {
 generate_certificate default
 for domain in "${!SITES[@]}"; do
   upstream_host="$(echo "${SITES[$domain]}" | cut -d';' -f1)"
-  upstream_port="$(echo "${SITES[$domain]}" | cut -d';' -f2)"
-  default_www="$(echo "${SITES[$domain]}" | cut -d';' -f3)"
+  if [ "${upstream_host}" == "redirect" ]; then  
+    from="$(echo "${SITES[$domain]}" | cut -d';' -f2)"
+    target="$(echo "${SITES[$domain]}" | cut -d';' -f3)"
+    generate_redirect "$from" "$target"
+  else
+    upstream_port="$(echo "${SITES[$domain]}" | cut -d';' -f2)"
+    default_www="$(echo "${SITES[$domain]}" | cut -d';' -f3)"
 
-  generate_config "${domain}" "${upstream_host}" "${upstream_port}" "${default_www}"
+    generate_config "${domain}" "${upstream_host}" "${upstream_port}" "${default_www}"
+  fi
   generate_certificate "${domain}"
 done
