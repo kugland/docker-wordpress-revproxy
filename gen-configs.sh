@@ -16,6 +16,7 @@ define_site() {
   local domain
   local upstream_host
   local upstream_port
+  local cloudflare=1
   REPLY="$(getopt -o '' --long default-www,default-non-www -n "define_site" -- "$@")"
   if [ $? != 0 ]; then
     exit 1
@@ -25,6 +26,7 @@ define_site() {
     case "$1" in
       --default-www) default_www=www; shift ;;
       --default-non-www) default_www=non-www; shift ;;
+      --no-cloudflare) cloudflare=0; shift ;;
       --) shift; break ;;
     esac
   done
@@ -32,10 +34,10 @@ define_site() {
   upstream_host="${2/:*/}"
   upstream_port="${2/*:/}"
   if [ -z "$domain" ] || [ -z "$upstream_host" ] || [ -z "$upstream_port" ]; then
-    echo "Usage: define_site [--default-(non-)www] DOMAIN UPSTREAM:PORT"
+    echo "Usage: define_site [--default-(non-)www] [--no-cloudflare] DOMAIN UPSTREAM:PORT"
     exit 1
   fi
-  SITES[$domain]="$upstream_host;$upstream_port;$default_www"
+  SITES[$domain]="$upstream_host;$upstream_port;$default_www;$cloudflare"
   echo "Site defined: $domain, $upstream_host:$upstream_port, $default_www"
 }
 
@@ -50,6 +52,7 @@ generate_config() {
   local upstream_host="$2"
   local upstream_port="$3"
   local default_www="$4"
+  local cloudflare="$5"
 
   echo "Setting up config for reverse proxy: ${domain} -> ${upstream_host}:${upstream_port}"
   (
@@ -82,7 +85,9 @@ generate_config() {
     echo "  listen 443 ssl;"
     echo "  ssl_certificate        /etc/nginx/certs/${domain}.crt;"
     echo "  ssl_certificate_key    /etc/nginx/certs/${domain}.key;"
-    echo "  include snippets/cloudflare.conf;"
+    if [ "${cloudflare}" -eq 1 ]; then
+      echo "  include snippets/cloudflare.conf;"
+    fi
     echo "}"
   ) > "/etc/nginx/conf.d/99-${domain}.conf"
 }
@@ -127,15 +132,15 @@ generate_certificate() {
 generate_certificate default
 for domain in "${!SITES[@]}"; do
   upstream_host="$(echo "${SITES[$domain]}" | cut -d';' -f1)"
-  if [ "${upstream_host}" == "redirect" ]; then  
+  if [ "${upstream_host}" == "redirect" ]; then
     from="$(echo "${SITES[$domain]}" | cut -d';' -f2)"
     target="$(echo "${SITES[$domain]}" | cut -d';' -f3)"
     generate_redirect "$from" "$target"
   else
     upstream_port="$(echo "${SITES[$domain]}" | cut -d';' -f2)"
     default_www="$(echo "${SITES[$domain]}" | cut -d';' -f3)"
-
-    generate_config "${domain}" "${upstream_host}" "${upstream_port}" "${default_www}"
+    cloudflare="$(echo "${SITES[$domain]}" | cut -d';' -f4)"
+    generate_config "${domain}" "${upstream_host}" "${upstream_port}" "${default_www}" "${cloudflare}"
   fi
   generate_certificate "${domain}"
 done
