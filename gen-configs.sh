@@ -17,7 +17,7 @@ define_site() {
   local upstream_host
   local upstream_port
   local cloudflare=1
-  REPLY="$(getopt -o '' --long default-www,default-non-www -n "define_site" -- "$@")"
+  REPLY="$(getopt -o '' --long default-www,default-non-www,no-cloudflare -n "define_site" -- "$@")"
   if [ $? != 0 ]; then
     exit 1
   fi
