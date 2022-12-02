@@ -141,6 +141,12 @@ for domain in "${!SITES[@]}"; do
     default_www="$(echo "${SITES[$domain]}" | cut -d';' -f3)"
     cloudflare="$(echo "${SITES[$domain]}" | cut -d';' -f4)"
     generate_config "${domain}" "${upstream_host}" "${upstream_port}" "${default_www}" "${cloudflare}"
+
+    echo "Testing connection to upstream at ${upstream_host}:${upstream_port}"
+    while ! nc -z -w 1 "${upstream_host}" "${upstream_port}"; do
+      echo "Waiting for upstream at ${upstream_host}:${upstream_port} to be available..."
+      sleep 5
+    done
   fi
   generate_certificate "${domain}"
 done
