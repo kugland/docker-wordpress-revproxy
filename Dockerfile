@@ -15,4 +15,7 @@ RUN chmod +x /docker-entrypoint.d/00-gen-configs.sh
 COPY ./cloudflare.conf /etc/nginx/snippets/cloudflare.conf
 COPY ./origin-pull-ca.pem /etc/nginx/ssl/origin-pull-ca.pem
 
+COPY ./cloudflare-origin-ips/ips-v4.txt /etc/cloudflare-origin-ips-v4.txt
+COPY ./cloudflare-origin-ips/ips-v6.txt /etc/cloudflare-origin-ips-v6.txt
+
 VOLUME [ "/etc/nginx/certs" ]

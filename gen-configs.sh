@@ -3,6 +3,18 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+sed -E -e 's,^,set_real_ip_from ,g; s,$,;,g' \
+  /etc/cloudflare-origin-ips-v4.txt \
+  /etc/cloudflare-origin-ips-v6.txt \
+  >/etc/nginx/snippets/cloudflare-real-ips.conf;
+
+(
+( sed -E -e 's,^,allow ,g; s,$,;,g' \
+  /etc/cloudflare-origin-ips-v4.txt \
+  /etc/cloudflare-origin-ips-v6.txt );
+  echo; echo 'deny all;'
+) >/etc/nginx/snippets/block-all-but-cloudflare.conf;
+
 declare -A SITES
 
 define_site() {
@@ -57,6 +69,9 @@ generate_config() {
   echo "Setting up config for reverse proxy: ${domain} -> ${upstream_host}:${upstream_port}"
   (
     echo "server {"
+    if [ "${cloudflare}" -eq 1 ]; then
+      echo "  include snippets/block-all-but-cloudflare.conf;"
+    fi
     echo "  server_name ${domain} www.${domain};"
     echo "  client_max_body_size 64M;"
     if [ "${default_www}" = "non-www" ]; then
