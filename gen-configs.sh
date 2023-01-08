@@ -9,7 +9,7 @@ sed -E -e 's,^,set_real_ip_from ,g; s,$,;,g' \
   >/etc/nginx/snippets/cloudflare-real-ips.conf;
 
 (
-( sed -E -e 's,^,allow ,g; s,$,;,g' \
+  ( sed -E -e 's,^,allow ,g; s,$,;,g' \
   /etc/cloudflare-origin-ips-v4.txt \
   /etc/cloudflare-origin-ips-v6.txt );
   echo; echo 'deny all;'
@@ -18,12 +18,13 @@ sed -E -e 's,^,set_real_ip_from ,g; s,$,;,g' \
 declare -A SITES
 
 define_site() {
-  # Usage: define_site [--default-www|--default-non-www] DOMAIN UPSTREAM:PORT
+  # Usage: define_site [--default-www|--default-non-www] [--no-cloudflare] DOMAIN UPSTREAM:PORT
   #
   # Define a site.
   #
   # If --default-www is specified, then the default domain is www.DOMAIN.
   # If --default-non-www is specified, then the default domain is DOMAIN.
+  # If --no-cloudflare is specified, the site won’t require Cloudflare origin certificate.
   local default_www=www
   local domain
   local upstream_host
