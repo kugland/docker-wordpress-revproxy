@@ -72,7 +72,7 @@ generate_config() {
 
   if [ -n "$protect" ]; then
     mkdir /etc/apache2
-    printf "%s\n" "$(echo $PROTECT | sed 's,:.*,,g'):$(openssl passwd -apr1 "$(echo "$PROTECT" | sed 's,.*:,,g')")" > /etc/apache2/.htpasswd
+    printf "%s\n" "$(echo "$protect" | sed 's,:.*,,g'):$(openssl passwd -apr1 "$(echo "$protect" | sed 's,.*:,,g')")" > /etc/apache2/.htpasswd
     chmod 644 /etc/apache2/.htpasswd
   fi
 
