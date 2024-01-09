@@ -31,7 +31,7 @@ define_site() {
   local upstream_port
   local cloudflare=1
   local protect=''
-  REPLY="$(getopt -o '' --long default-www,default-non-www,no-cloudflare,protect -n "define_site" -- "$@")"
+  REPLY="$(getopt -o '' --long default-www,default-non-www,no-cloudflare,protect: -n "define_site" -- "$@")"
   if [ $? != 0 ]; then
     exit 1
   fi
@@ -41,7 +41,7 @@ define_site() {
       --default-www) default_www=www; shift ;;
       --default-non-www) default_www=non-www; shift ;;
       --no-cloudflare) cloudflare=0; shift ;;
-      --protect) protect="$2"; shift ; shift ;;
+      --protect) shift; protect="$1"; shift ;;
       --) shift; break ;;
     esac
   done
