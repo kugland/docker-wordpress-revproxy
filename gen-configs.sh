@@ -73,7 +73,7 @@ generate_config() {
   if [ -n "$protect" ]; then
     mkdir /etc/apache2
     printf "%s\n" "$(echo $PROTECT | sed 's,:.*,,g'):$(openssl passwd -apr1 "$(echo "$PROTECT" | sed 's,.*:,,g')")" > /etc/apache2/.htpasswd
-    chmod 600 /etc/apache2/.htpasswd
+    chmod 644 /etc/apache2/.htpasswd
   fi
 
   echo "Setting up config for reverse proxy: ${domain} -> ${upstream_host}:${upstream_port}"
