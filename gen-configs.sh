@@ -30,6 +30,7 @@ define_site() {
   local upstream_host
   local upstream_port
   local cloudflare=1
+  local protect=''
   REPLY="$(getopt -o '' --long default-www,default-non-www,no-cloudflare,protect -n "define_site" -- "$@")"
   if [ $? != 0 ]; then
     exit 1
@@ -40,7 +41,7 @@ define_site() {
       --default-www) default_www=www; shift ;;
       --default-non-www) default_www=non-www; shift ;;
       --no-cloudflare) cloudflare=0; shift ;;
-      --protect) protect=$2; shift 2 ;;
+      --protect) protect="$2"; shift ; shift ;;
       --) shift; break ;;
     esac
   done
@@ -48,11 +49,11 @@ define_site() {
   upstream_host="${2/:*/}"
   upstream_port="${2/*:/}"
   if [ -z "$domain" ] || [ -z "$upstream_host" ] || [ -z "$upstream_port" ]; then
-    echo "Usage: define_site [--default-(non-)www] [--no-cloudflare] DOMAIN UPSTREAM:PORT"
+    echo "Usage: define_site [--default-(non-)www] [--no-cloudflare] [--protect USER:PASS] DOMAIN UPSTREAM:PORT"
     exit 1
   fi
-  SITES[$domain]="$upstream_host;$upstream_port;$default_www;$cloudflare"
-  echo "Site defined: $domain, $upstream_host:$upstream_port, $default_www"
+  SITES[$domain]="$upstream_host;$upstream_port;$default_www;$cloudflare;$protect"
+  echo "Site defined: $domain, $upstream_host:$upstream_port, $default_www, protect=$protect"
 }
 
 redirect() {
@@ -67,10 +68,11 @@ generate_config() {
   local upstream_port="$3"
   local default_www="$4"
   local cloudflare="$5"
+  local protect="$6"
 
   if [ -n "$protect" ]; then
     mkdir /etc/apache2
-    printf "%s\n" "$(echo $PROTECT | sed 's,:.*,,g'):$(openssl passwd -apr1 "$(echo "$PROTECT" | sed 's,.*:,,g')")" >> /etc/apache2/.htpasswd
+    printf "%s\n" "$(echo $PROTECT | sed 's,:.*,,g'):$(openssl passwd -apr1 "$(echo "$PROTECT" | sed 's,.*:,,g')")" > /etc/apache2/.htpasswd
     chmod 600 /etc/apache2/.htpasswd
   fi
 
@@ -167,7 +169,8 @@ for domain in "${!SITES[@]}"; do
     upstream_port="$(echo "${SITES[$domain]}" | cut -d';' -f2)"
     default_www="$(echo "${SITES[$domain]}" | cut -d';' -f3)"
     cloudflare="$(echo "${SITES[$domain]}" | cut -d';' -f4)"
-    generate_config "${domain}" "${upstream_host}" "${upstream_port}" "${default_www}" "${cloudflare}"
+    protect="$(echo "${SITES[$domain]}" | cut -d';' -f5)"
+    generate_config "${domain}" "${upstream_host}" "${upstream_port}" "${default_www}" "${cloudflare}" "${protect}"
 
     echo "Testing connection to upstream at ${upstream_host}:${upstream_port}"
     while ! nc -z -w 1 "${upstream_host}" "${upstream_port}"; do
