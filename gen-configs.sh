@@ -40,6 +40,7 @@ define_site() {
       --default-www) default_www=www; shift ;;
       --default-non-www) default_www=non-www; shift ;;
       --no-cloudflare) cloudflare=0; shift ;;
+      --protect) protect=$2; shift 2 ;;
       --) shift; break ;;
     esac
   done
@@ -67,6 +68,12 @@ generate_config() {
   local default_www="$4"
   local cloudflare="$5"
 
+  if [ -n "$protect" ]; then
+    mkdir /etc/apache2
+    printf "%s\n" "$(echo $PROTECT | sed 's,:.*,,g'):$(openssl passwd -apr1 "$(echo "$PROTECT" | sed 's,.*:,,g')")" >> /etc/apache2/.htpasswd
+    chmod 600 /etc/apache2/.htpasswd
+  fi
+
   echo "Setting up config for reverse proxy: ${domain} -> ${upstream_host}:${upstream_port}"
   (
     echo "server {"
@@ -83,6 +90,10 @@ generate_config() {
       echo "  if (\$host = ${domain}) {"
       echo "    return 302 https://www.${domain}\$request_uri;"
       echo "  }"
+    fi
+    if [ -n "$protect" ]; then
+      echo '  auth_basic           "Password protected";'
+      echo "  auth_basic_user_file /etc/apache2/.htpasswd;"
     fi
     echo "  location / {"
     echo "    resolver 127.0.0.11 ipv6=off;"
