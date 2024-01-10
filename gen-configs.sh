@@ -96,9 +96,6 @@ generate_config() {
     if [ -n "$protect" ]; then
       echo '  auth_basic           "Password protected";'
       echo "  auth_basic_user_file /etc/apache2/.htpasswd;"
-      echo '  location /wp-admin/ {'
-      echo '    auth_basic off;'
-      echo '  }'
     fi
     echo "  location / {"
     echo "    resolver 127.0.0.11 ipv6=off;"
