@@ -1,0 +1,41 @@
+# This GitHub Workflow should be executed daily, at midnight, to update the
+# list of Cloudflare origin IPs.
+
+# This will download the latest list of Cloudflare IPs, and if there
+# are any changes, it will commit them to the repository.
+
+name: update-cloudflare-ips
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+  push:
+    branches:
+      - "master"
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: crazy-max/ghaction-import-gpg@v7
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+      - name: Update Cloudflare IPs
+        run: |
+          curl -sSL https://www.cloudflare.com/ips-v4 | sort -n > ips-v4.txt
+          curl -sSL https://www.cloudflare.com/ips-v6 | sort > ips-v6.txt
+      - name: Commit changes
+        run: |
+          # Test if there are any changes
+          git add ips-v4.txt ips-v6.txt
+          git commit -S -m "Update Cloudflare origin IPs" || true
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          branch: master
