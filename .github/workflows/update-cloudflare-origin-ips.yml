@@ -1,0 +1,55 @@
+name: update-cloudflare-origin-ips
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 5 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  PREFIX: cloudflare-origin-ips
+  UPSTREAM: https://github.com/kugland/cloudflare-origin-ips
+  UPSTREAM_REF: master
+  BRANCH: update/cloudflare-origin-ips
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # git subtree needs the full history to find the last squash.
+          fetch-depth: 0
+      - name: Pull upstream into subtree
+        id: pull
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          before=$(git rev-parse HEAD)
+          git subtree pull --prefix="$PREFIX" --squash \
+            -m "Update $PREFIX subtree to latest upstream" \
+            "$UPSTREAM" "$UPSTREAM_REF"
+          if [ "$(git rev-parse HEAD)" = "$before" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Open or update pull request
+        if: steps.pull.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git push --force origin "HEAD:refs/heads/$BRANCH"
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --head "$BRANCH" --base "${{ github.ref_name }}" \
+              --title "Update $PREFIX subtree" \
+              --body "Pulls the latest \`$UPSTREAM_REF\` of $UPSTREAM into \`$PREFIX/\` via \`git subtree pull --squash\`."
+          fi
